@@ -1,131 +1,134 @@
 #!/usr/bin/python3
-'''Creates a class called Base
-'''
+"""
+This module implements `base` class of all other classes in this project.
+The goal of it is to manage id attribute in all your future classes
+and to avoid duplicating the same code (by extension, same bugs)
+"""
 import json
-import csv
+import turtle
 
 
 class Base:
-    '''This class will be the base of all other classes in this Project
-    '''
+    """
+    implementation
+    """
+
     __nb_objects = 0
 
     def __init__(self, id=None):
-        '''Initializes new base instance
+        """initialization
 
         Args:
-           id (int): Used as identifier for subclasses incase of debugging
-        '''
-        if id is None:
-            self.__class__.__nb_objects += 1
-            self.id = self.__class__.__nb_objects
-        else:
+            id (int, optional): object id. Defaults to None.
+        """
+        if id is not None:
             self.id = id
+        else:
+            Base.__nb_objects += 1
+            self.id = Base.__nb_objects
 
     @staticmethod
     def to_json_string(list_dictionaries: dict):
-        '''Converts a list containing dictionaries to JSON
-
-
-        Args:
-           list_dictionaries (list): List of dictionaries converted to JSON
-        '''
-        if list_dictionaries is None or list_dictionaries == []:
+        """list to json"""
+        if list_dictionaries is None:
             return "[]"
         else:
             return json.dumps(list_dictionaries)
 
     @classmethod
     def save_to_file(cls, list_objs):
-        '''Converts square, rectangle objects to json and saves them in files
-
-        Args:
-           list_objs (list): A list of Square of Rectangle objects
-        '''
-        class_name = cls.__name__
-        with open(f"{class_name}.json", 'w') as f:
-            if list_objs is None or list_objs == []:
-                f.write("[]")
-            else:
-                dict_list = [value.to_dictionary() for value in list_objs]
-                list_objs_json = cls.to_json_string(dict_list)
-                f.write(list_objs_json)
+        """save to json file"""
+        filename = cls.__name__ + ".json"
+        text = []
+        if list_objs is not None:
+            for lst in list_objs:
+                text.append(lst.to_dictionary())
+        with open(filename, mode="w", encoding="utf-8") as f:
+            return f.write(Base.to_json_string(text))
 
     @staticmethod
     def from_json_string(json_string):
-        '''Converts json string back into an object
-
-        Args:
-           json_string (str): JSON formatted string
-        '''
+        """transform a JSON string representation `json_string` to a list"""
         if json_string is None or len(json_string) == 0:
             return []
-        return json.loads(json_string)
+        else:
+            return json.loads(json_string)
 
     @classmethod
     def create(cls, **dictionary):
-        '''Creates a new instance of Square, Rectangle based on dictionary
-
-        Args:
-           dictionary (dict): A dictionary containing values to set to instance
-        '''
-        if cls.__name__ == "Square":
-            my_square = cls(1)
-            my_square.update(**dictionary)
-            return my_square
-        elif cls.__name__ == "Rectangle":
-            my_rectangle = cls(4, 4)
-            my_rectangle.update(**dictionary)
-            return my_rectangle
+        """create a new object from dictionary"""
+        if cls.__name__ == "Rectangle":
+            new = cls(10, 10)
+        elif cls.__name__ == "Square":
+            new = cls(10, 10)
+        new.update(**dictionary)
+        return new
 
     @classmethod
     def load_from_file(cls):
-        '''Loads a Square or Rectangle object from a json file
-        if the file is not found an empty string is returned
-        '''
-        try:
-            with open(f"{cls.__name__}.json", 'r') as f:
-                f_json = f.read()
-        except FileNotFoundError:
-            return []
-        obj_dict_list = cls.from_json_string(f_json)
-        return [cls.create(**value) for value in obj_dict_list]
+        """load from file"""
+        filename = cls.__name__ + ".json"
+        object_created = []
+        with open(filename, 'r') as f:
+            file_string = f.read().replace('\n', '')
+            data = cls.from_json_string(file_string)
+            for el in data:
+                object_created.append(cls.create(**el))
+
+        return object_created
 
     @classmethod
     def save_to_file_csv(cls, list_objs):
-        '''Stores rectangle/square objects to a .csv file
+        """save to csv file"""
+        filename = cls.__name__ + ".csv"
+        content = ""
+        text = []
+        if list_objs is not None:
+            content += ','.join(list_objs[0].to_dictionary().keys())
+            content += '\n'
+            for lst in list_objs:
+                content += ','.join(
+                    map(str, lst.to_dictionary().values())
+                )
+                content += '\n'
 
-        Args:
-           list_objs (list): A list of Square/Rectangle objects.
-        '''
-        name = cls.__name__
-        with open(f"{name}.csv", 'w') as csv_file:
-            csv_writer = csv.writer(csv_file, delimiter=",")
-            if list_objs is None or list_objs == []:
-                csv_writer.writerow("")
-            else:
-                for obj in list_objs:
-                    if name == "Square":
-                        csv_writer.writerow([obj.id, obj.size, obj.x, obj.y])
-                    elif name == "Rectangle":
-                        csv_writer.writerow([obj.id, obj.width,
-                                             obj.height, obj.x, obj.y])
+        with open(filename, mode="w", encoding="utf-8") as f:
+            return f.write(content)
 
     @classmethod
     def load_from_file_csv(cls):
-        '''Retrieves data from a .csv file and
-        returns a list of Square/Rectangle Objects
-        '''
-        result = []
-        name = cls.__name__
-        with open(f"{name}.csv", 'r') as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=",")
-            for row in csv_reader:
-                if name == "Square":
-                    result.append(cls.create(id=int(row[0]), size=int(row[1]),
-                                             x=int(row[2]), y=int(row[3])))
-                elif name == "Rectangle":
-                    result.append(cls.create(id=int(row[0]), width=int(row[1]),
-                                             height=int(row[2]), x=int(row[3]),
-                                             y=int(row[4])))
-        return result
+        """load from csv"""
+        filename = cls.__name__ + ".csv"
+        object_created = []
+
+        with open(filename, 'r') as f:
+            header = f.readline().replace('\n', '').split(',')
+            for el in f.readlines():
+                values = map(int, el.replace('\n', '').split(','))
+                data = dict(zip(header, values))
+                object_created.append(cls.create(**data))
+
+        return object_created
+
+    @classmethod
+    def draw(cls, list_rectangles, list_squares):
+        """draw the figure
+        """
+        window = turtle.Screen()
+        pen = turtle.Pen()
+        figures = list_rectangles + list_squares
+
+        for fig in figures:
+            pen.up()
+            pen.goto(fig.x, fig.y)
+            pen.down()
+            pen.forward(fig.width)
+            pen.right(90)
+            pen.forward(fig.height)
+            pen.right(90)
+            pen.forward(fig.width)
+            pen.right(90)
+            pen.forward(fig.height)
+            pen.right(90)
+
+        window.exitonclick()
